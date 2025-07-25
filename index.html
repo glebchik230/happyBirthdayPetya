@@ -24,6 +24,7 @@
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
     color:var(--text);
     background:var(--bg);
+    touch-action: manipulation; /* предотвращаем двойной тап-зум */
   }
   .app{
     min-height:100%;
@@ -293,7 +294,7 @@
 
   <div class="character-wrapper">
     <div class="character" id="tapTarget" title="Тапай!">
-      <img src="https://vk.com/im?z=photo417040016_457252593/268f6a79a5ed8aa40f" />
+      <img src="https://chatgpt.com/backend-api/estuary/content?id=file-AeERaPx16f522E37zi8o5b&ts=487066&p=fsns&cid=1&sig=9e805c2008abf36962c3c814a5ae79f18d79d4c21ec13ec9f630f7b0db450e01" alt="character" />
     </div>
   </div>
 
@@ -364,7 +365,6 @@ const defaultState = {
   lastLogin: Date.now(),
   daily: { lastClaim: 0, streak: 0 },
   boosters: {
-    // id: { level, basePrice }
     multitap: { level: 0 },
     autoclick: { level: 0 },
     energyMax: { level: 0 },
@@ -383,7 +383,7 @@ const BOOSTERS = [
     desc: 'Увеличивает доход за один тап.',
     basePrice: 100,
     priceGrowth: 1.35,
-    effect: lvl => 1 + lvl, // perClick = 1 + level
+    effect: lvl => 1 + lvl,
     format: lvl => `x${1 + lvl} за клик`
   },
   {
@@ -392,7 +392,7 @@ const BOOSTERS = [
     desc: 'Пассивные клики в секунду.',
     basePrice: 500,
     priceGrowth: 1.4,
-    effect: lvl => lvl, // cps = level
+    effect: lvl => lvl,
     format: lvl => `${lvl}/сек`
   },
   {
@@ -424,8 +424,8 @@ const BOOSTERS = [
   },
 ];
 
-const DAILY_BASE = 250; // стартовая награда
-const DAILY_GROW = 1.15; // рост за стрик
+const DAILY_BASE = 250;
+const DAILY_GROW = 1.15;
 
 /* -------------------- INIT -------------------- */
 spawnBalloons();
@@ -465,7 +465,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 
 /* -------------------- MAIN FUNCTIONS -------------------- */
 function onTap(e){
-  if(S.energy <= 0) return; // no energy
+  if(S.energy <= 0) return;
   S.tokens += S.perClick;
   S.energy = Math.max(0, S.energy - 1);
 
@@ -476,7 +476,6 @@ function onTap(e){
 }
 
 function applyBoosters(){
-  // Recalculate derived stats from booster levels
   const getLvl = id => (S.boosters[id]?.level ?? 0);
 
   S.perClick = 1 + getLvl('multitap');
@@ -485,7 +484,6 @@ function applyBoosters(){
   S.energyRegen = 5 + getLvl('energyRegen') * 3;
   S.offlinePerHour = getLvl('offline') * 50;
 
-  // clamp energy to new max
   S.energy = Math.min(S.energy, S.maxEnergy);
 }
 
@@ -549,7 +547,7 @@ function claimDaily(){
   renderStats();
   confetti();
   saveState();
-  openDailyModal(); // refresh content
+  openDailyModal();
 }
 
 function grantOffline(){
@@ -567,18 +565,15 @@ function grantOffline(){
 }
 
 function startLoops(){
-  // main game loop: energy regen + autoclick
   setInterval(() => {
     const now = Date.now();
     const dt = (now - S.lastTick) / 1000;
     S.lastTick = now;
 
-    // energy regen
     if(S.energy < S.maxEnergy){
       S.energy = Math.min(S.maxEnergy, S.energy + S.energyRegen * dt);
     }
 
-    // auto cps
     if(S.autoCps > 0){
       const gain = S.autoCps * dt;
       S.tokens += gain;
@@ -591,12 +586,10 @@ function startLoops(){
 
 /* -------------------- RENDER -------------------- */
 function renderStats(){
-  // numbers
   document.getElementById('tokens').textContent = formatNum(S.tokens);
   document.getElementById('energyText').textContent = `${Math.floor(S.energy)} / ${S.maxEnergy}`;
   document.getElementById('energyFill').style.width = `${(S.energy / S.maxEnergy) * 100}%`;
 
-  // cabinet
   document.getElementById('cab_tokens').textContent = formatNum(S.tokens);
   document.getElementById('cab_mult').textContent = `x${S.perClick}`;
   document.getElementById('cab_cps').textContent = `${S.autoCps}/сек`;
@@ -661,7 +654,6 @@ function isYesterday(last, now){
   return d === 1;
 }
 function dayDiff(a, b){
-  // zero times to midnight
   const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
   const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
   return Math.round((db - da) / 86400000);
@@ -691,7 +683,6 @@ function loadState(){
       return st;
     }
     const parsed = JSON.parse(raw);
-    // merge defaults for new fields
     return deepMerge(JSON.parse(JSON.stringify(defaultState)), parsed);
   }catch(e){
     console.error(e);
@@ -786,7 +777,7 @@ function confetti(){
   setTimeout(()=>cancelAnimationFrame(frame), 1200);
 
   function update(){
-    pieces.forEach(p=>{
+    pieces.forEach((p,i)=>{
       p.tiltAngle += p.tiltAngleIncremental;
       p.y += (Math.cos(0.01 + p.d) + 3 + p.r/2)/2;
       p.tilt = Math.sin(p.tiltAngle - i)/2 * 15;
@@ -818,5 +809,12 @@ function spawnBalloons(){
   }
 }
 </script>
+
+<!-- Блокируем масштабирование по жестам и двойным тапам -->
+<script>
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+  document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+</script>
 </body>
 </html>
+
