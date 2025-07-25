@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Birthday Clicker</title>
+<style>
+  :root{
+    --pink:#ff73c6;
+    --pink-dark:#e94aa9;
+    --purple:#9b59b6;
+    --bg:linear-gradient(135deg,#ffdde1 0%, #ee9ca7 100%);
+    --card-bg:rgba(255,255,255,.2);
+    --glass:backdrop-filter: blur(10px);
+    --text:#3a2b3f;
+    --success:#2ecc71;
+    --danger:#e74c3c;
+    --warning:#f1c40f;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;
+    margin:0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    color:var(--text);
+    background:var(--bg);
+  }
+  .app{
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 12px 96px;
+    position:relative;
+  }
+
+  /* Header */
+  header{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .balance{
+    background:var(--card-bg);
+    border-radius:16px;
+    padding:8px 12px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .balance .num{
+    font-size:1.3rem;
+  }
+  .btn{
+    border:none;
+    outline:none;
+    border-radius:14px;
+    background:var(--pink);
+    color:#fff;
+    padding:8px 14px;
+    font-weight:600;
+    cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,0,0,.12);
+    transition:transform .08s;
+  }
+  .btn:active{
+    transform:scale(.97);
+  }
+  .btn.secondary{
+    background:var(--purple);
+  }
+  .btn.ghost{
+    background:transparent;
+    color:var(--pink-dark);
+    box-shadow:none;
+  }
+
+  /* Character */
+  .character-wrapper{
+    position:relative;
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+  }
+  .character{
+    position:relative;
+    width:min(70vw, 360px);
+    max-width:360px;
+    aspect-ratio:1/1;
+    border-radius:50%;
+    background:rgba(255,255,255,.45);
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .character img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .character::after{
+    content:"🎉";
+    position:absolute;
+    right:6%;
+    top:6%;
+    font-size:2rem;
+    animation:pop 1.2s infinite;
+  }
+  @keyframes pop{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.2)}
+  }
+
+  /* Tap popup */
+  .tap-fx{
+    position:absolute;
+    pointer-events:none;
+    font-weight:700;
+    color:var(--pink-dark);
+    text-shadow:0 0 6px rgba(255,255,255,.6);
+    animation:floatUp 700ms ease-out forwards;
+  }
+  @keyframes floatUp{
+    0%{opacity:1; transform:translateY(0) scale(1)}
+    100%{opacity:0; transform:translateY(-60px) scale(1.2)}
+  }
+
+  /* Energy bar */
+  .energy{
+    width:100%;
+    max-width:480px;
+    height:14px;
+    border-radius:999px;
+    background:rgba(255,255,255,.3);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.1);
+    overflow:hidden;
+    margin:8px auto 0;
+  }
+  .energy-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--pink), var(--purple));
+    transition:width .25s;
+  }
+  .energy-label{
+    text-align:center;
+    margin-top:6px;
+    font-size:.85rem;
+    opacity:.8;
+  }
+
+  /* Bottom nav */
+  .nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    padding:12px;
+    display:flex;
+    gap:8px;
+    justify-content:space-around;
+    backdrop-filter:blur(12px);
+    background:rgba(255,255,255,.65);
+    border-top-left-radius:16px;
+    border-top-right-radius:16px;
+    box-shadow:0 -6px 20px rgba(0,0,0,.08);
+  }
+  .nav .btn{
+    flex:1;
+  }
+
+  /* Modal */
+  .modal{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    z-index:20;
+  }
+  .modal.open{
+    display:flex;
+  }
+  .modal-backdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    backdrop-filter:blur(2px);
+  }
+  .modal-card{
+    position:relative;
+    z-index:1;
+    width:100%;
+    max-width:520px;
+    max-height:90vh;
+    overflow:auto;
+    background:rgba(255,255,255,.92);
+    border-radius:20px;
+    box-shadow:0 12px 32px rgba(0,0,0,.2);
+    padding:20px 16px 24px;
+  }
+  .modal-card h2{
+    margin:0 0 12px;
+    text-align:center;
+  }
+  .close-x{
+    position:absolute;
+    right:12px;
+    top:10px;
+    font-size:1.4rem;
+    cursor:pointer;
+  }
+  .list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:12px;
+  }
+  .card{
+    background:rgba(255,255,255,.7);
+    border-radius:14px;
+    padding:12px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,.06);
+  }
+  .card-title{
+    font-weight:600;
+  }
+  .pill{
+    padding:2px 8px;
+    border-radius:999px;
+    font-size:.75rem;
+    background:rgba(0,0,0,.06);
+  }
+  .small{
+    font-size:.85rem;
+    opacity:.8;
+  }
+  .stat{
+    display:flex;
+    justify-content:space-between;
+    margin:4px 0;
+  }
+
+  /* Confetti canvases */
+  canvas#confetti{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:999;
+  }
+
+  /* Balloons */
+  .balloon{
+    position:fixed;
+    bottom:-120px;
+    font-size:2.2rem;
+    animation:float 8s linear infinite;
+    opacity:.8;
+  }
+  @keyframes float{
+    from{transform:translateY(0)}
+    to{transform:translateY(-120vh)}
+  }
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+
+<div class="app" id="app">
+
+  <header>
+    <div class="balance">
+      🎂 <span>Tokens:</span> <span class="num" id="tokens">0</span>
+    </div>
+    <button class="btn secondary" id="openCabinet">Кабинет</button>
+  </header>
+
+  <div class="character-wrapper">
+    <div class="character" id="tapTarget" title="Тапай!">
+      <img src="PHOTO_URL_HERE" alt="character" />
+    </div>
+  </div>
+
+  <div class="energy" title="Энергия">
+    <div class="energy-fill" id="energyFill" style="width: 100%"></div>
+  </div>
+  <div class="energy-label">
+    Энергия: <span id="energyText">0 / 0</span>
+  </div>
+
+  <nav class="nav">
+    <button class="btn" id="openBoosters">Бустеры</button>
+    <button class="btn secondary" id="dailyBtn">Дейлик</button>
+    <button class="btn ghost" id="resetBtn">Сброс</button>
+  </nav>
+</div>
+
+<!-- Кабинет -->
+<div class="modal" id="cabinetModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card">
+    <span class="close-x" data-close="cabinetModal">✖</span>
+    <h2>🎉 Кабинет</h2>
+    <div class="stat"><span>Токены:</span><b id="cab_tokens">0</b></div>
+    <div class="stat"><span>Мультиклик:</span><b id="cab_mult">x1</b></div>
+    <div class="stat"><span>Автоклик:</span><b id="cab_cps">0/сек</b></div>
+    <div class="stat"><span>Макс. энергия:</span><b id="cab_emax">100</b></div>
+    <div class="stat"><span>Реген энергии:</span><b id="cab_eregen">5/сек</b></div>
+    <div class="stat"><span>Офлайн доход:</span><b id="cab_offline">0/час</b></div>
+    <hr />
+    <div class="small">Последний вход: <span id="cab_lastLogin"></span></div>
+    <div class="small">Стрик дейликов: <span id="cab_streak">0</span></div>
+  </div>
+</div>
+
+<!-- Бустеры -->
+<div class="modal" id="boostersModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card">
+    <span class="close-x" data-close="boostersModal">✖</span>
+    <h2>🚀 Бустеры</h2>
+    <div class="list" id="boostersList"></div>
+  </div>
+</div>
+
+<!-- Дейлик -->
+<div class="modal" id="dailyModal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card">
+    <span class="close-x" data-close="dailyModal">✖</span>
+    <h2>📅 Ежедневная награда</h2>
+    <p id="dailyInfo"></p>
+    <button class="btn" id="claimDaily">Забрать</button>
+  </div>
+</div>
+
+<script>
+/* -------------------- STATE -------------------- */
+const defaultState = {
+  tokens: 0,
+  perClick: 1,
+  autoCps: 0,
+  energy: 100,
+  maxEnergy: 100,
+  energyRegen: 5, // per second
+  offlinePerHour: 0,
+  lastTick: Date.now(),
+  lastLogin: Date.now(),
+  daily: { lastClaim: 0, streak: 0 },
+  boosters: {
+    // id: { level, basePrice }
+    multitap: { level: 0 },
+    autoclick: { level: 0 },
+    energyMax: { level: 0 },
+    energyRegen: { level: 0 },
+    offline: { level: 0 }
+  },
+};
+
+let S = loadState();
+
+/* -------------------- CONSTANTS -------------------- */
+const BOOSTERS = [
+  {
+    id: 'multitap',
+    title: 'Мультиклик',
+    desc: 'Увеличивает доход за один тап.',
+    basePrice: 100,
+    priceGrowth: 1.35,
+    effect: lvl => 1 + lvl, // perClick = 1 + level
+    format: lvl => `x${1 + lvl} за клик`
+  },
+  {
+    id: 'autoclick',
+    title: 'Автоклик',
+    desc: 'Пассивные клики в секунду.',
+    basePrice: 500,
+    priceGrowth: 1.4,
+    effect: lvl => lvl, // cps = level
+    format: lvl => `${lvl}/сек`
+  },
+  {
+    id: 'energyMax',
+    title: 'Энергия+',
+    desc: 'Увеличивает максимальную энергию.',
+    basePrice: 200,
+    priceGrowth: 1.45,
+    effect: lvl => 100 + lvl * 50,
+    format: lvl => `${100 + lvl * 50}`
+  },
+  {
+    id: 'energyRegen',
+    title: 'Реген энергии',
+    desc: 'Быстрее восстанавливает энергию.',
+    basePrice: 300,
+    priceGrowth: 1.5,
+    effect: lvl => 5 + lvl * 3,
+    format: lvl => `${5 + lvl * 3}/сек`
+  },
+  {
+    id: 'offline',
+    title: 'Офлайн доход',
+    desc: 'Начисляет токены, пока тебя нет.',
+    basePrice: 800,
+    priceGrowth: 1.6,
+    effect: lvl => lvl * 50,
+    format: lvl => `${lvl * 50}/час`
+  },
+];
+
+const DAILY_BASE = 250; // стартовая награда
+const DAILY_GROW = 1.15; // рост за стрик
+
+/* -------------------- INIT -------------------- */
+spawnBalloons();
+renderStats();
+renderBoosters();
+applyBoosters();
+grantOffline();
+startLoops();
+
+/* -------------------- EVENTS -------------------- */
+document.getElementById('tapTarget').addEventListener('click', onTap);
+
+document.getElementById('openCabinet').addEventListener('click', () => openModal('cabinetModal'));
+document.getElementById('openBoosters').addEventListener('click', () => openModal('boostersModal'));
+document.getElementById('dailyBtn').addEventListener('click', openDailyModal);
+document.getElementById('claimDaily').addEventListener('click', claimDaily);
+
+document.querySelectorAll('.close-x').forEach(x => {
+  x.addEventListener('click', e => {
+    closeModal(e.target.getAttribute('data-close'));
+  });
+});
+document.querySelectorAll('.modal-backdrop').forEach(back => {
+  back.addEventListener('click', () => {
+    document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+  });
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(confirm('Точно сбросить прогресс?')) {
+    localStorage.removeItem('birthday_clicker_state');
+    S = JSON.parse(JSON.stringify(defaultState));
+    S.lastLogin = Date.now();
+    saveState();
+    location.reload();
+  }
+});
+
+/* -------------------- MAIN FUNCTIONS -------------------- */
+function onTap(e){
+  if(S.energy <= 0) return; // no energy
+  S.tokens += S.perClick;
+  S.energy = Math.max(0, S.energy - 1);
+
+  spawnTapFx(`+${S.perClick}`, e.clientX, e.clientY);
+
+  renderStats();
+  saveState();
+}
+
+function applyBoosters(){
+  // Recalculate derived stats from booster levels
+  const getLvl = id => (S.boosters[id]?.level ?? 0);
+
+  S.perClick = 1 + getLvl('multitap');
+  S.autoCps = getLvl('autoclick');
+  S.maxEnergy = 100 + getLvl('energyMax') * 50;
+  S.energyRegen = 5 + getLvl('energyRegen') * 3;
+  S.offlinePerHour = getLvl('offline') * 50;
+
+  // clamp energy to new max
+  S.energy = Math.min(S.energy, S.maxEnergy);
+}
+
+function buyBooster(id){
+  const b = BOOSTERS.find(x => x.id === id);
+  const lvl = S.boosters[id]?.level ?? 0;
+  const price = Math.floor(b.basePrice * Math.pow(b.priceGrowth, lvl));
+
+  if(S.tokens < price){
+    toast('Недостаточно токенов 😢');
+    return;
+  }
+
+  S.tokens -= price;
+  S.boosters[id].level = lvl + 1;
+  applyBoosters();
+  renderBoosters();
+  renderStats();
+  confetti();
+  saveState();
+}
+
+function priceOf(id, lvl){
+  const b = BOOSTERS.find(x => x.id === id);
+  return Math.floor(b.basePrice * Math.pow(b.priceGrowth, lvl));
+}
+
+function openDailyModal(){
+  const now = Date.now();
+  const canClaim = canClaimDaily(now);
+  const nextStr = canClaim ? 'Можно забирать!' : formatNextDaily(now);
+  const reward = calcDailyReward();
+  const info = `
+    ${canClaim ? '🎁 Доступна награда!' : '⏳ Ещё рано.'}<br/>
+    Текущий стрик: <b>${S.daily.streak}</b><br/>
+    Награда сегодня: <b>${reward}</b> токенов<br/>
+    ${nextStr}
+  `;
+  document.getElementById('dailyInfo').innerHTML = info;
+  openModal('dailyModal');
+}
+
+function claimDaily(){
+  const now = Date.now();
+  if(!canClaimDaily(now)){
+    toast('Пока нельзя — загляни позже!');
+    return;
+  }
+
+  const reward = calcDailyReward();
+  S.tokens += reward;
+  const last = S.daily.lastClaim;
+
+  if(isYesterday(last, now)){
+    S.daily.streak += 1;
+  }else{
+    S.daily.streak = 1;
+  }
+  S.daily.lastClaim = now;
+
+  renderStats();
+  confetti();
+  saveState();
+  openDailyModal(); // refresh content
+}
+
+function grantOffline(){
+  const now = Date.now();
+  const deltaMs = now - S.lastLogin;
+  S.lastLogin = now;
+
+  const hours = deltaMs / 3600000;
+  const gained = Math.floor(hours * S.offlinePerHour);
+  if(gained > 0){
+    S.tokens += gained;
+    toast(`Офлайн-бонус: +${gained} токенов 🎁`);
+  }
+  saveState();
+}
+
+function startLoops(){
+  // main game loop: energy regen + autoclick
+  setInterval(() => {
+    const now = Date.now();
+    const dt = (now - S.lastTick) / 1000;
+    S.lastTick = now;
+
+    // energy regen
+    if(S.energy < S.maxEnergy){
+      S.energy = Math.min(S.maxEnergy, S.energy + S.energyRegen * dt);
+    }
+
+    // auto cps
+    if(S.autoCps > 0){
+      const gain = S.autoCps * dt;
+      S.tokens += gain;
+    }
+
+    renderStats();
+    saveState();
+  }, 250);
+}
+
+/* -------------------- RENDER -------------------- */
+function renderStats(){
+  // numbers
+  document.getElementById('tokens').textContent = formatNum(S.tokens);
+  document.getElementById('energyText').textContent = `${Math.floor(S.energy)} / ${S.maxEnergy}`;
+  document.getElementById('energyFill').style.width = `${(S.energy / S.maxEnergy) * 100}%`;
+
+  // cabinet
+  document.getElementById('cab_tokens').textContent = formatNum(S.tokens);
+  document.getElementById('cab_mult').textContent = `x${S.perClick}`;
+  document.getElementById('cab_cps').textContent = `${S.autoCps}/сек`;
+  document.getElementById('cab_emax').textContent = `${S.maxEnergy}`;
+  document.getElementById('cab_eregen').textContent = `${S.energyRegen}/сек`;
+  document.getElementById('cab_offline').textContent = `${S.offlinePerHour}/час`;
+  document.getElementById('cab_lastLogin').textContent = new Date(S.lastLogin).toLocaleString();
+  document.getElementById('cab_streak').textContent = S.daily.streak;
+}
+
+function renderBoosters(){
+  const box = document.getElementById('boostersList');
+  box.innerHTML = '';
+  BOOSTERS.forEach(b => {
+    const lvl = S.boosters[b.id]?.level ?? 0;
+    const price = priceOf(b.id, lvl);
+    const levelText = b.format(lvl);
+    const nextLevelText = b.format(lvl + 1);
+
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div style="flex:1">
+        <div class="card-title">${b.title} <span class="pill">ур. ${lvl}</span></div>
+        <div class="small">${b.desc}</div>
+        <div class="small">Сейчас: <b>${levelText}</b> → След.: <b>${nextLevelText}</b></div>
+        <div class="small">Цена: <b>${formatNum(price)}</b></div>
+      </div>
+      <button class="btn" data-buy="${b.id}">Купить</button>
+    `;
+    box.appendChild(div);
+  });
+
+  box.querySelectorAll('[data-buy]').forEach(btn => {
+    btn.addEventListener('click', e => buyBooster(e.target.getAttribute('data-buy')));
+  });
+}
+
+/* -------------------- MODALS -------------------- */
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+}
+
+/* -------------------- DAILY HELPERS -------------------- */
+function canClaimDaily(now){
+  const last = S.daily.lastClaim;
+  if(!last) return true;
+  const lastDay = new Date(last);
+  const nowDay = new Date(now);
+  return dayDiff(lastDay, nowDay) >= 1;
+}
+function calcDailyReward(){
+  const s = Math.max(1, S.daily.streak || 1);
+  return Math.floor(DAILY_BASE * Math.pow(DAILY_GROW, s - 1));
+}
+function isYesterday(last, now){
+  if(!last) return false;
+  const d = dayDiff(new Date(last), new Date(now));
+  return d === 1;
+}
+function dayDiff(a, b){
+  // zero times to midnight
+  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((db - da) / 86400000);
+}
+function formatNextDaily(now){
+  const last = S.daily.lastClaim;
+  if(!last) return 'Можно забирать!';
+  const lastDate = new Date(last);
+  const next = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate() + 1);
+  const diffMs = next - now;
+  if(diffMs <= 0) return 'Можно забирать!';
+  const h = Math.floor(diffMs / 3600000);
+  const m = Math.floor((diffMs % 3600000) / 60000);
+  return `Следующее получение через ${h}ч ${m}м`;
+}
+
+/* -------------------- UTILS -------------------- */
+function saveState(){
+  localStorage.setItem('birthday_clicker_state', JSON.stringify(S));
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem('birthday_clicker_state');
+    if(!raw) {
+      const st = JSON.parse(JSON.stringify(defaultState));
+      st.lastLogin = Date.now();
+      return st;
+    }
+    const parsed = JSON.parse(raw);
+    // merge defaults for new fields
+    return deepMerge(JSON.parse(JSON.stringify(defaultState)), parsed);
+  }catch(e){
+    console.error(e);
+    return JSON.parse(JSON.stringify(defaultState));
+  }
+}
+function deepMerge(base, patch){
+  for(const k in patch){
+    if(typeof patch[k] === 'object' && patch[k] !== null && !Array.isArray(patch[k])){
+      base[k] = deepMerge(base[k] ?? {}, patch[k]);
+    }else{
+      base[k] = patch[k];
+    }
+  }
+  return base;
+}
+
+function formatNum(n){
+  if(n < 1000) return Math.floor(n);
+  const units = ['K','M','B','T','P'];
+  let u = -1;
+  let num = n;
+  while(num >= 1000 && u < units.length - 1){
+    num /= 1000;
+    u++;
+  }
+  return `${num.toFixed(2)}${units[u]}`;
+}
+
+function spawnTapFx(text, x, y){
+  const fx = document.createElement('div');
+  fx.className = 'tap-fx';
+  fx.textContent = text;
+  fx.style.left = `${x}px`;
+  fx.style.top = `${y}px`;
+  document.body.appendChild(fx);
+  setTimeout(() => fx.remove(), 700);
+}
+
+function toast(msg, timeout=2000){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.position='fixed';
+  t.style.bottom='110px';
+  t.style.left='50%';
+  t.style.transform='translateX(-50%)';
+  t.style.background='rgba(0,0,0,.75)';
+  t.style.color='#fff';
+  t.style.padding='8px 14px';
+  t.style.borderRadius='999px';
+  t.style.zIndex='999';
+  t.style.fontSize='.9rem';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), timeout);
+}
+
+/* -------------------- CONFETTI -------------------- */
+function confetti(){
+  const canvas = document.getElementById('confetti');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
+
+  const pieces = [];
+  for(let i=0;i<120;i++){
+    pieces.push({
+      x: Math.random()*W,
+      y: Math.random()*H - H,
+      r: Math.random()*6+4,
+      d: Math.random()*200 + 100,
+      tilt: Math.random()*10 - 10,
+      tiltAngleIncremental: Math.random()*0.07 + 0.05,
+      tiltAngle: 0
+    });
+  }
+
+  let frame;
+  (function draw(){
+    ctx.clearRect(0,0,W,H);
+    pieces.forEach(p=>{
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = randomColor();
+      ctx.moveTo(p.x + p.tilt + p.r/2, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r/2);
+      ctx.stroke();
+    });
+    update();
+    frame = requestAnimationFrame(draw);
+  })();
+
+  setTimeout(()=>cancelAnimationFrame(frame), 1200);
+
+  function update(){
+    pieces.forEach(p=>{
+      p.tiltAngle += p.tiltAngleIncremental;
+      p.y += (Math.cos(0.01 + p.d) + 3 + p.r/2)/2;
+      p.tilt = Math.sin(p.tiltAngle - i)/2 * 15;
+
+      if(p.y > H){
+        p.x = Math.random()*W;
+        p.y = -20;
+      }
+    });
+  }
+  function randomColor(){
+    const colors = ['#ff73c6','#ffcc00','#9b59b6','#2ecc71','#3498db','#e74c3c'];
+    return colors[Math.floor(Math.random()*colors.length)];
+  }
+}
+
+/* -------------------- BALLOONS -------------------- */
+function spawnBalloons(){
+  const emojis = ['🎈','🎊','🎉','🎂','🎁'];
+  const count = 16;
+  for(let i=0;i<count;i++){
+    const b = document.createElement('div');
+    b.className='balloon';
+    b.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    b.style.left = Math.random()*100 + 'vw';
+    b.style.animationDuration = (6 + Math.random()*6) + 's';
+    b.style.fontSize = (1.8 + Math.random()*1.6) + 'rem';
+    document.body.appendChild(b);
+  }
+}
+</script>
+</body>
+</html>
